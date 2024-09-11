@@ -21,18 +21,35 @@ function OnExit(code, signal)
   end
 end
 
+
 function M.AiderOpen(args, window_type)
-  window_type = window_type or 'vsplit'
+  window_type = window_type or 'tab'
+
   if M.aider_buf and vim.api.nvim_buf_is_valid(M.aider_buf) then
     helpers.open_buffer_in_new_window(window_type, M.aider_buf)
   else
     command = 'aider ' .. (args or '')
-    helpers.open_window(window_type)
-    command = helpers.add_buffers_to_command(command)
-    M.aider_job_id = vim.fn.termopen(command, {on_exit = OnExit})
-    M.aider_buf = vim.api.nvim_get_current_buf()
+
+    -- Check if 'toggleterm' is available
+    if pcall(require, 'toggleterm.terminal') then
+      -- Use toggleterm if available
+      local Terminal = require('toggleterm.terminal').Terminal
+      local aider_term = Terminal:new({
+        cmd = command,
+        direction = window_type,
+        on_exit = OnExit
+      })
+      aider_term:toggle()
+    else
+      -- Fallback to original behavior
+      helpers.open_window(window_type)
+      command = helpers.add_buffers_to_command(command)
+      M.aider_job_id = vim.fn.termopen(command, {on_exit = OnExit})
+      M.aider_buf = vim.api.nvim_get_current_buf()
+    end
   end
 end
+
 
 function M.AiderOnBufferOpen(bufnr)
   if not vim.g.aider_buffer_sync or vim.g.aider_buffer_sync == 0 then
